@@ -1,0 +1,21 @@
+{
+  "name": "paper-wonderland",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/e2e.mjs"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^8.56.2"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

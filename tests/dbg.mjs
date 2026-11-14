@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath: '/home/box/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell', args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+p.on('console', m => { if (!m.text().startsWith('BJS')) console.log('console', m.type(), m.text()); });
+p.on('pageerror', e => console.log('PAGEERR', e));
+await p.goto('http://localhost:4173/paper-wonderland/');
+await p.waitForSelector('#title:not(.hidden)');
+await p.click('#startBtn'); await p.waitForTimeout(800);
+const st = () => p.evaluate(() => window.__game.state());
+const w = (ms) => p.waitForTimeout(ms);
+const snippet = (await import('node:fs')).readFileSync(process.argv[2], 'utf8');
+await eval('(async()=>{' + snippet + '})()');
+await b.close();

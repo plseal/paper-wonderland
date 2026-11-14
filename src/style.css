@@ -1,0 +1,82 @@
+:root {
+  --ink: #4a3f6b;
+  --paper: #fbf8f2;
+  --lav: #b9b0ec;
+  --blue: #9fc4ef;
+  --pink: #f4b8cf;
+  --font: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "M PLUS Rounded 1c", "Kosugi Maru", "Yu Gothic UI", "Meiryo", "Noto Sans JP", "Noto Sans CJK JP", system-ui, sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #d9d3f5; font-family: var(--font); color: var(--ink); user-select: none; -webkit-user-select: none; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+
+.paper-card {
+  background: var(--paper);
+  background-image:
+    radial-gradient(circle at 20% 15%, rgba(185,176,236,.25), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(159,196,239,.28), transparent 45%);
+  border-radius: 18px;
+  box-shadow: 0 2px 0 #e6dff5, 0 6px 0 #d3c9ee, 0 14px 30px rgba(74,63,107,.25);
+  border: 2px solid #fff;
+}
+
+/* ---------- screens ---------- */
+.screen {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.35), rgba(185,176,236,.55));
+  backdrop-filter: blur(3px);
+  transition: opacity .4s;
+}
+.screen.hidden { opacity: 0; pointer-events: none !important; visibility: hidden; transition: opacity .4s, visibility 0s .4s; }
+.screen .panel { padding: 28px 34px 26px; text-align: center; max-width: min(92vw, 520px); transform: rotate(-1deg); }
+.screen h1 { margin: 6px 0 2px; font-size: clamp(26px, 6vw, 40px); letter-spacing: .04em; color: #5b4c94; text-shadow: 2px 2px 0 #fff, 4px 4px 0 #d8d0f4; }
+.screen .sub { margin: 0 0 12px; font-size: 14px; letter-spacing: .3em; color: #8f86c1; }
+.screen p { margin: 8px 0; line-height: 1.7; font-size: 16px; }
+.screen img.hero { width: 132px; height: auto; filter: drop-shadow(3px 5px 0 rgba(74,63,107,.18)); animation: bob 1.6s ease-in-out infinite; }
+.btn {
+  font-family: inherit; font-size: 22px; font-weight: 700; color: #fff; letter-spacing: .1em;
+  background: linear-gradient(#8f7fe0, #7a69d4); border: none; border-radius: 999px; padding: 12px 40px; margin-top: 10px;
+  box-shadow: 0 5px 0 #5a4aa8, 0 10px 18px rgba(74,63,107,.3); cursor: pointer; transition: transform .08s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #5a4aa8; }
+.controls-hint { font-size: 13px !important; color: #7b72a8; line-height: 1.8 !important; }
+kbd { font-family: inherit; background: #efeafc; border-radius: 6px; padding: 1px 6px; border: 1px solid #d4cbf1; font-size: 12px; }
+.stats { display: flex; gap: 18px; justify-content: center; font-size: 18px; margin: 10px 0 4px; }
+@keyframes bob { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+
+/* ---------- HUD ---------- */
+.hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none !important; gap: 8px; }
+.hud .box { padding: 8px 14px; font-size: 15px; pointer-events: none; }
+.hud .stars { font-size: 20px; font-weight: 700; white-space: nowrap; }
+.hud .stars b { color: #e8a93a; }
+.hud .quest { font-size: 14px; max-width: 58vw; }
+.hud .quest small { display: block; color: #8f86c1; font-size: 11px; letter-spacing: .1em; }
+.hud .right { display: flex; gap: 8px; pointer-events: auto; }
+.icon-btn { pointer-events: auto; width: 42px; height: 42px; border-radius: 50%; border: 2px solid #fff; background: var(--paper); font-size: 20px; box-shadow: 0 3px 0 #d3c9ee; cursor: pointer; }
+.prompt { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 8px 18px; font-size: 16px; pointer-events: none !important; white-space: nowrap; }
+.prompt.hidden, .toast.hidden { display: none; }
+.toast { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); padding: 10px 22px; font-size: 20px; font-weight: 700; pointer-events: none !important; animation: pop .35s ease-out; white-space: nowrap; }
+@keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+/* ---------- dialog ---------- */
+.dialog { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(94vw, 640px); padding: 16px 22px 18px; cursor: pointer; }
+.dialog.hidden { display: none; }
+.dialog .name { position: absolute; top: -16px; left: 18px; background: #8f7fe0; color: #fff; font-weight: 700; padding: 4px 14px; border-radius: 999px; font-size: 15px; box-shadow: 0 3px 0 #5a4aa8; }
+.dialog .name.sora { background: #6fa6e0; box-shadow: 0 3px 0 #4a7fb8; }
+.dialog .text { font-size: 20px; line-height: 1.7; min-height: 2.2em; margin-top: 6px; }
+.dialog .next { position: absolute; right: 16px; bottom: 8px; font-size: 14px; color: #8f86c1; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+
+/* ---------- touch ---------- */
+.touch { display: none; }
+.touch.on { display: block; }
+.joy { position: fixed; left: max(18px, env(safe-area-inset-left)); bottom: max(22px, env(safe-area-inset-bottom)); width: 128px; height: 128px; border-radius: 50%; background: rgba(251,248,242,.55); border: 3px dashed rgba(255,255,255,.9); touch-action: none; }
+.joy .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: #fbf8f2; box-shadow: 0 4px 0 #cfc5ee; }
+.tbtn { position: fixed; border-radius: 50%; border: 3px solid #fff; font-family: inherit; font-weight: 700; color: #fff; touch-action: none; box-shadow: 0 5px 0 rgba(74,63,107,.35); }
+.tbtn.jump { right: max(20px, env(safe-area-inset-right)); bottom: max(28px, env(safe-area-inset-bottom)); width: 86px; height: 86px; background: #7f9fe6; font-size: 17px; }
+.tbtn.act { right: max(118px, calc(env(safe-area-inset-right) + 98px)); bottom: max(40px, env(safe-area-inset-bottom)); width: 70px; height: 70px; background: #e69bb8; font-size: 14px; opacity: .45; }
+.tbtn.act.ready { opacity: 1; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { transform: scale(1.08); } }
+.tbtn:active { transform: translateY(3px); }
