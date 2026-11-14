@@ -38,4 +38,5 @@ npm install
 npm run dev        # local
 npm run build      # dist/ (base = /paper-wonderland/)
 npm run preview & npm test   # Playwright keyboard-only playthrough + screenshots in shots/
+npm run deploy     # publish dist/ to gh-pages
 ```
