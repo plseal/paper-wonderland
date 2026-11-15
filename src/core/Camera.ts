@@ -11,6 +11,8 @@ export class CameraController {
   private target = new Vector3();
   private focus: { p: Vector3; until: number } | null = null;
   private time = 0;
+  /** Optional occlusion test: fraction of target→camera segment that is free (city level). */
+  clip?: (from: Vector3, to: Vector3) => number;
 
   constructor(scene: Scene, canvas: HTMLCanvasElement) {
     this.cam = new FreeCamera('cam', new Vector3(0, 5, -10), scene);
@@ -45,7 +47,11 @@ export class CameraController {
     const k = snap ? 1 : 1 - Math.exp(-dt * 5);
     this.target = Vector3.Lerp(this.target, want, k);
     const cp = Math.cos(this.pitch);
-    const desired = this.target.add(new Vector3(-Math.sin(this.yaw) * cp * dist, Math.sin(this.pitch) * dist, -Math.cos(this.yaw) * cp * dist));
+    let desired = this.target.add(new Vector3(-Math.sin(this.yaw) * cp * dist, Math.sin(this.pitch) * dist, -Math.cos(this.yaw) * cp * dist));
+    if (this.clip) {
+      const f = this.clip(this.target, desired);
+      if (f < 1) { desired = Vector3.Lerp(this.target, desired, f); this.cam.position = desired.clone(); }
+    }
     this.cam.position = snap ? desired : Vector3.Lerp(this.cam.position, desired, k);
     this.cam.setTarget(this.target);
   }

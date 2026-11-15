@@ -10,6 +10,7 @@ import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder';
 import { CreateDisc } from '@babylonjs/core/Meshes/Builders/discBuilder';
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { cutoutMat, paperMat, rng } from './PaperTexture';
 
 /** Scene, soft pastel lighting, shadows, fog and the layered paper backdrop. */
@@ -18,6 +19,8 @@ export class World {
   shadows: ShadowGenerator;
   sun: DirectionalLight;
   clouds: Mesh[] = [];
+  /** Parent of the paper mountains + clouds; levels may move it to follow the player. */
+  backdrop!: TransformNode;
 
   constructor(engine: Engine) {
     const scene = (this.scene = new Scene(engine));
@@ -60,6 +63,7 @@ export class World {
   /** Diorama style: rings of cut-paper mountain silhouettes + paper clouds. */
   private buildBackdrop() {
     const scene = this.scene;
+    this.backdrop = new TransformNode('backdrop', scene);
     const layers = [
       { r: 62, col: '#b6aee8', h: 15, seed: 1 },
       { r: 78, col: '#c7c0f0', h: 21, seed: 2 },
@@ -92,7 +96,7 @@ export class World {
         ring.push(p);
       }
       const merged = Mesh.MergeMeshes(ring, true, true);
-      if (merged) { merged.isPickable = false; merged.freezeWorldMatrix(); }
+      if (merged) { merged.isPickable = false; merged.parent = this.backdrop; }
     }
     // clouds: soft paper discs
     const cm = paperMat(scene, 'cloud', '#ffffff', { seed: 9, emissive: 0.6, tints: ['rgba(200,190,255,0.25)'] });
@@ -104,6 +108,7 @@ export class World {
       c.position.set(-50 + r() * 100, 16 + r() * 10, 30 + r() * 40);
       c.billboardMode = Mesh.BILLBOARDMODE_Y;
       c.isPickable = false;
+      c.parent = this.backdrop;
       this.clouds.push(c);
     }
   }

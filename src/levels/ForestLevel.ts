@@ -18,6 +18,7 @@ import type { Effects } from '../world/Effects';
 import { cutoutMat, paperMat, paperTexture, rng } from '../world/PaperTexture';
 import { FoldPanel, createCardTree, createConeTree, createFox, createHouse, createStar, createStone, easeOutBack, flat } from '../world/Origami';
 import type { DialogLine } from '../ui/Dialog';
+import type { Level } from './Level';
 
 /** What the level needs from the game shell. */
 export interface LevelHost {
@@ -39,7 +40,13 @@ const HINGE_Z = 9.5;
 const BRIDGE_LEN = 7, BRIDGE_W = 4;
 const GATE_Z = 34;
 
-export class ForestLevel {
+export class ForestLevel implements Level {
+  id = 'forest' as const;
+  starTotal = STAR_TOTAL;
+  start = START.clone();
+  introToast = 'コンに はなしかけて みよう！';
+  clearTitle = 'やったね！ クリア！';
+  clearText = 'もりの もんが ひらいて、<br/>コンも にっこり。ありがとう、そらちゃん！';
   col = new CollisionWorld();
   stars: { mesh: Mesh; base: Vector3; got: boolean }[] = [];
   bridge: FoldPanel;

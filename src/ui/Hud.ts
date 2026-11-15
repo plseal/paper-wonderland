@@ -17,7 +17,7 @@ export class Hud {
     this.el.className = 'hud';
     this.el.style.display = 'none';
     this.el.innerHTML = `
-      <div class="box paper-card stars">★ <b id="starCount">0</b> / 5</div>
+      <div class="box paper-card stars">★ <b id="starCount">0</b> / <span id="starTotal">5</span></div>
       <div class="box paper-card quest"><small>やること</small><span id="questText"></span></div>
       <div class="right"><button class="icon-btn" id="muteBtn" aria-label="おと">🔊</button></div>`;
     root.appendChild(this.el);
@@ -69,7 +69,23 @@ export class Hud {
     this.touch.classList.toggle('on', on && this.touchMode);
     if (!on) this.setPrompt(null);
   }
-  setStars(n: number) { this.stars.textContent = String(n); }
+  setStars(n: number, total = 5) {
+    this.stars.textContent = String(n);
+    const t = this.el.querySelector('#starTotal');
+    if (t && t.textContent !== String(total)) t.textContent = String(total);
+  }
+  private creditsEl?: HTMLDivElement;
+  /** Small map-style attribution line (bottom right) shown while playing. */
+  setCredits(text: string) {
+    if (!this.creditsEl) {
+      this.creditsEl = document.createElement('div');
+      this.creditsEl.className = 'credits-line';
+      this.creditsEl.id = 'creditsLine';
+      this.el.appendChild(this.creditsEl);
+    }
+    this.creditsEl.textContent = text;
+    this.creditsEl.style.display = text ? '' : 'none';
+  }
   setQuest(t: string) { if (this.quest.textContent !== t) this.quest.textContent = t; }
   setPrompt(label: string | null) {
     if (!label) { this.prompt.classList.add('hidden'); this.actBtn.classList.remove('ready'); this.actBtn.textContent = 'はなす'; return; }

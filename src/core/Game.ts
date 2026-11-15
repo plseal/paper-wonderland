@@ -7,7 +7,8 @@ import { CameraController } from './Camera';
 import { World } from '../world/World';
 import { Effects } from '../world/Effects';
 import { Player } from '../player/Player';
-import { ForestLevel, START, STAR_TOTAL } from '../levels/ForestLevel';
+import { ForestLevel } from '../levels/ForestLevel';
+import type { Level, LevelId } from '../levels/Level';
 import { Dialog, type DialogLine } from '../ui/Dialog';
 import { Menu } from '../ui/Menu';
 import { Hud } from '../ui/Hud';
@@ -20,7 +21,8 @@ export class Game {
   sfx = new Sfx();
   state: State = 'loading';
   world!: World;
-  level!: ForestLevel;
+  level!: Level;
+  levelId: LevelId = 'forest';
   player!: Player;
   camera!: CameraController;
   effects!: Effects;
@@ -35,7 +37,7 @@ export class Game {
     this.engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, 1.75));
     this.dialog = new Dialog(ui);
     this.dialog.onType = () => this.sfx.talk();
-    this.menu = new Menu(ui, () => this.start(), () => this.retry());
+    this.menu = new Menu(ui, (id) => this.choose(id), () => this.retry(), () => this.toTitle());
     this.hud = new Hud(ui, this.input, () => (this.sfx.muted = !this.sfx.muted));
     window.addEventListener('resize', () => this.engine.resize());
   }
@@ -47,29 +49,59 @@ export class Game {
     this.menu.ready();
   }
 
-  private async buildLevel() {
+  private async buildLevel(id: LevelId = this.levelId) {
+    this.levelId = id;
     this.world = new World(this.engine);
     const scene = this.world.scene;
     this.effects = new Effects(scene);
     this.camera = new CameraController(scene, this.canvas);
-    this.level = new ForestLevel(scene, this.world, {
-      toast: (m, ms) => this.hud.toast(m, ms),
-      dialog: (l, cb) => this.openDialog(l, cb),
-      focus: (p, s) => this.camera.showPoint(p, s),
+    const host = {
+      toast: (m: string, ms?: number) => this.hud.toast(m, ms),
+      dialog: (l: DialogLine[], cb?: () => void) => this.openDialog(l, cb),
+      focus: (p: Vector3, s: number) => this.camera.showPoint(p, s),
       sfx: this.sfx,
       effects: this.effects,
       onProgress: () => this.refreshHud(),
       onClear: () => this.clear(),
-    });
+    };
+    if (id === 'koiwa') {
+      const { KoiwaLevel } = await import('../levels/KoiwaLevel');
+      this.level = await KoiwaLevel.create(scene, this.world, host, this.camera);
+    } else {
+      this.level = new ForestLevel(scene, this.world, host);
+    }
+    this.hud.setCredits(id === 'koiwa' ? '3D都市モデル: PLATEAU（国土交通省）／ 地図: © OpenStreetMap contributors' : '');
     this.player = await Player.create(scene);
     this.world.cast(...this.player.casters);
-    this.player.teleport(START);
+    this.player.teleport(this.level.start);
     this.player.update(0.016, { x: 0, z: 0 }, false, 0, this.level.col);
     this.camera.update(0.016, this.player.pos, 0, true);
     await scene.whenReadyAsync();
   }
 
   private openDialog(lines: DialogLine[], cb?: () => void) { this.input.clearEdges(); this.dialog.show(lines, cb); }
+
+  /** Title-screen level choice: rebuild the scene if a different level is wanted. */
+  async choose(id: LevelId) {
+    this.sfx.unlock();
+    if (id !== this.levelId || this.level.cleared || this.state !== 'title') {
+      this.menu.hideTitle();
+      this.menu.showLoading(true);
+      this.engine.stopRenderLoop();
+      this.world.scene.dispose();
+      try { await this.buildLevel(id); }
+      finally { this.menu.showLoading(false); }
+      this.engine.runRenderLoop(() => this.frame());
+    }
+    this.start();
+  }
+
+  toTitle() {
+    this.menu.hideClear();
+    this.hud.show(false);
+    this.state = 'title';
+    this.menu.showTitle();
+  }
 
   start() {
     this.sfx.unlock();
@@ -78,7 +110,7 @@ export class Game {
     this.playTime = 0;
     this.hud.show(true);
     this.refreshHud();
-    this.hud.toast('コンに はなしかけて みよう！', 2200);
+    this.hud.toast(this.level.introToast, 2600);
     this.canvas.focus();
   }
 
@@ -95,11 +127,11 @@ export class Game {
     this.state = 'clear';
     this.sfx.clear();
     this.hud.show(false);
-    setTimeout(() => this.menu.showClear(this.level.starCount, this.playTime), 900);
+    setTimeout(() => this.menu.showClear(this.level.starCount, this.playTime, this.level.starTotal, this.level.clearTitle, this.level.clearText), 900);
   }
 
   refreshHud() {
-    this.hud.setStars(this.level.starCount);
+    this.hud.setStars(this.level.starCount, this.level.starTotal);
     this.hud.setQuest(this.level.questText());
   }
 
@@ -147,10 +179,10 @@ export class Game {
   debug() {
     return {
       state: () => ({
-        state: this.state, pos: { x: this.player.pos.x, y: this.player.pos.y, z: this.player.pos.z },
+        level: this.levelId, state: this.state, pos: { x: this.player.pos.x, y: this.player.pos.y, z: this.player.pos.z },
         grounded: this.player.grounded, groundId: this.player.groundId,
-        stars: this.level.starCount, total: STAR_TOTAL, questStage: this.level.questStage,
-        bridgeDown: this.level.bridgeDown, gateOpen: this.level.gateOpen, cleared: this.level.cleared,
+        stars: this.level.starCount, total: this.level.starTotal, questStage: this.level.questStage,
+        bridgeDown: !!this.level.bridgeDown, gateOpen: !!this.level.gateOpen, cleared: this.level.cleared,
         dialogOpen: this.dialog.open, cutscene: this.camera.inCutscene, camYaw: this.camera.yaw,
         stars3d: this.level.stars.map((s) => ({ x: s.base.x, y: s.base.y, z: s.base.z, got: s.got })),
         fps: this.engine.getFps(), activeMeshes: this.world.scene.getActiveMeshes().length, meshes: this.world.scene.meshes.length,

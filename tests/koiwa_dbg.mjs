@@ -1,0 +1,18 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath: '/home/box/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell', args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1100, height: 640 } });
+p.on('console', m => { if (m.type()==='error' || m.type()==='warning') console.log('console', m.type(), m.text()); });
+p.on('pageerror', e => console.log('PAGEERR', e));
+await p.goto('http://localhost:4173/paper-wonderland/');
+await p.waitForSelector('#title:not(.hidden)', { timeout: 60000 });
+await p.screenshot({ path: '/tmp/k_title.png' });
+const t0 = Date.now();
+await p.click('#koiwaBtn');
+await p.waitForFunction(() => window.__game.state().level === 'koiwa' && window.__game.state().state === 'play', null, { timeout: 120000 });
+console.log('koiwa loaded in', Date.now() - t0, 'ms');
+await p.waitForTimeout(1500);
+console.log(JSON.stringify(await p.evaluate(() => window.__game.state())));
+await p.screenshot({ path: '/tmp/k_start.png' });
+const snippet = process.argv[2] ? (await import('node:fs')).readFileSync(process.argv[2], 'utf8') : '';
+if (snippet) await eval('(async()=>{' + snippet + '})()');
+await b.close();

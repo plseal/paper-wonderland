@@ -13,10 +13,14 @@ export type Blocker = BoxBlocker | CircleBlocker;
 
 export const STEP = 0.35;
 
+/** Extra collision provider (e.g. a spatially hashed set of city building footprints). */
+export interface ExtraCollider { resolve(pos: { x: number; z: number }, radius: number, feetY: number): void; }
+
 export class CollisionWorld {
   surfaces: Surface[] = [];
   blockers: Blocker[] = [];
   bounds = { minX: -16.5, maxX: 16.5, minZ: -19.5, maxZ: 39.5 };
+  extras: ExtraCollider[] = [];
 
   addSurface(s: Surface) { this.surfaces.push(s); return s; }
   addBlocker(b: Blocker) { this.blockers.push(b); return b; }
@@ -36,6 +40,7 @@ export class CollisionWorld {
   /** Push a cylinder (feet at y, given radius & height) out of blockers. Mutates pos. */
   resolve(pos: { x: number; y: number; z: number }, radius: number, height: number, feetY = pos.y) {
     for (let iter = 0; iter < 2; iter++) {
+      for (const e of this.extras) e.resolve(pos, radius, feetY);
       for (const b of this.blockers) {
         if (b.enabled && !b.enabled()) continue;
         if (feetY >= b.top - 0.2) continue; // standing on / above it
