@@ -21,6 +21,7 @@ import { createConeTree, createFox, createStar, flat } from '../world/Origami';
 import type { DialogLine } from '../ui/Dialog';
 import type { Interactable, LevelHost } from './ForestLevel';
 import type { Level } from './Level';
+import type { CardInfo } from '../ui/ResultCard';
 
 /** 1 game unit = 1 m for the 50 m prototype sample. Data is in decimetres. */
 const S = 1.0;
@@ -72,6 +73,9 @@ export class KoiwaLevel implements Level {
   private train?: { cars: TransformNode[]; path: { x: number; z: number; s: number }[]; len: number; s: number; dir: number; wait: number; stopS: number; stopped: boolean };
   private t = 0;
   private cullT = 0;
+  /** recorded route of the bunny (metres) for the clear card */
+  path: number[] = [];
+  private pathT = 0;
 
   static async create(scene: Scene, world: World, host: LevelHost, camera?: CameraController) {
     const url = `${import.meta.env.BASE_URL}data/koiwa.json`;
@@ -736,6 +740,12 @@ export class KoiwaLevel implements Level {
   update(dt: number, p: Vector3) {
     this.t += dt;
     this.lastP.copyFrom(p);
+    this.pathT -= dt;
+    if (!this.cleared && this.pathT <= 0) {
+      this.pathT = 0.2;
+      const n = this.path.length, x = p.x / S, z = p.z / S;
+      if (n === 0 || Math.hypot(x - this.path[n - 2], z - this.path[n - 1]) > 0.6) this.path.push(Math.round(x * 10) / 10, Math.round(z * 10) / 10);
+    }
     // keep the paper mountains / clouds / skytree around the player
     this.world.backdrop.position.set(p.x, 0, p.z - 10);
     this.cullT -= dt;
@@ -782,6 +792,28 @@ export class KoiwaLevel implements Level {
       if (d < it.radius && d < bd) { best = it; bd = d; }
     }
     return best;
+  }
+
+  cardInfo(secs: number): CardInfo {
+    const dm = (v: number) => v / 10;
+    return {
+      title: 'そらちゃんと こいわの まち',
+      subtitle: 'こいわえき きたぐち ― かみの まちを たんけん',
+      secs, stars: this.starCount, total: this.starTotal,
+      url: 'https://plseal.github.io/paper-wonderland/',
+      credits: '建物: 3D都市モデル PLATEAU 東京都23区（国土交通省）を加工 ／ 地図: © OpenStreetMap contributors',
+      date: new Date(),
+      map: {
+        radius: this.d.radius,
+        buildings: this.d.buildings.map((b) => b.slice(2, 2 + b[1] * 2).map(dm)),
+        station: this.d.station.map(dm),
+        roads: { v: this.d.roads.v.map(dm), i: this.d.roads.i },
+        viaduct: { v: this.d.viaductDeck.v.map(dm), i: this.d.viaductDeck.i },
+        stars: this.stars.map((s) => ({ x: s.base.x / S, z: s.base.z / S })),
+        fox: { x: this.foxPos.x / S, z: this.foxPos.z / S },
+        path: this.path.slice(),
+      },
+    };
   }
 
   respawnPoint(lastSafe: Vector3) { const q = lastSafe.clone(); q.y = 0; return q; }

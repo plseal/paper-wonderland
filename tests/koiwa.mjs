@@ -8,8 +8,9 @@ const SHOTS = new URL('../shots/', import.meta.url).pathname;
 fs.mkdirSync(SHOTS, { recursive: true });
 const log = (...a) => console.log('[koiwa]', ...a);
 const errors = [];
+const browserCtxOpts = { acceptDownloads: true };
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROME || '/home/box/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1100, height: 640 } });
+const page = await browser.newPage({ viewport: { width: 1100, height: 640 }, ...browserCtxOpts });
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push(String(e)));
 const st = () => page.evaluate(() => window.__game.state());
@@ -42,6 +43,8 @@ try {
   s = await st();
   assert(s.pos.z > -3, `station wall blocks the bunny (pos ${s.pos.x.toFixed(1)}, ${s.pos.z.toFixed(1)})`);
 
+  await page.keyboard.down('KeyA'); await sleep(1500); await page.keyboard.up('KeyA');
+  await page.keyboard.down('KeyD'); await sleep(2500); await page.keyboard.up('KeyD');
   // talk to Kon
   const g = await page.evaluate(() => { const L = window.__game._game.level; return { x: L.interactables[0].pos.x, z: L.interactables[0].pos.z }; });
   await page.evaluate(([x, z]) => window.__game.teleport(x - 1.6, 0, z + 0.4), [g.x, g.z]);
@@ -74,6 +77,35 @@ try {
   assert(s.cleared && s.state === 'clear', 'returning to コン clears the level');
   await sleep(600);
   await shot('11_koiwa_clear');
+
+  // shareable result card (Koiwa only)
+  await page.waitForFunction(() => { const i = document.querySelector('#clearCard'); return i && i.complete && i.naturalWidth > 0 && !document.querySelector('#cardWrap').classList.contains('hidden'); }, null, { timeout: 20000 });
+  const dims = await page.evaluate(() => { const i = document.querySelector('#clearCard'); return [i.naturalWidth, i.naturalHeight]; });
+  assert(dims[0] === 1080 && dims[1] === 1350, `result card image rendered (${dims.join('x')})`);
+  assert(await page.isVisible('#saveCardBtn') && await page.isVisible('#shareCardBtn') && await page.isVisible('#retryBtn') && await page.isVisible('#titleBtn'), 'card buttons: ほぞん / シェア / もういちど / ステージを えらぶ');
+  const pathLen = await page.evaluate(() => window.__game._game.level.path.length / 2);
+  assert(pathLen >= 3, `route recorded (${pathLen} points)`);
+  await sleep(500);
+  await page.screenshot({ path: SHOTS + '12_koiwa_card.png' });
+  const dataUrl = await page.evaluate(() => window.__game._game.menu.card.dataUrl);
+  const png = Buffer.from(dataUrl.split(',')[1], 'base64');
+  assert(png.length > 50000 && png.subarray(1, 4).toString() === 'PNG', `PNG generated (${(png.length / 1024).toFixed(0)} KB)`);
+  fs.writeFileSync(SHOTS + '12_koiwa_card_export.png', png);
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 10000 }), page.click('#saveCardBtn')]);
+  assert(dl.suggestedFilename() === 'sorachan-koiwa-clear.png', 'がぞうを ほぞん downloads the PNG');
+  // share: headless has no file sharing → falls back to an X post intent
+  await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
+  await page.click('#shareCardBtn');
+  await sleep(500);
+  const opened = await page.evaluate(() => window.__opened);
+  const hasShare = await page.evaluate(() => !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'])], 'a.png', { type: 'image/png' })] })));
+  assert(hasShare || (opened.length === 1 && opened[0].startsWith('https://x.com/intent/post') && opened[0].includes(encodeURIComponent('https://plseal.github.io/paper-wonderland/'))), 'シェア uses Web Share or the X intent fallback');
+  // phone-sized layout still shows the card + buttons
+  await page.setViewportSize({ width: 390, height: 844 });
+  await sleep(600);
+  assert(await page.isVisible('#clearCard') && await page.isVisible('#shareCardBtn'), 'card fits a phone screen');
+  await page.screenshot({ path: SHOTS + '12_koiwa_card_mobile.png' });
+  await page.setViewportSize({ width: 1100, height: 640 });
 
   // back to title and the forest still works
   await page.click('#titleBtn');

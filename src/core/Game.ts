@@ -127,7 +127,12 @@ export class Game {
     this.state = 'clear';
     this.sfx.clear();
     this.hud.show(false);
-    setTimeout(() => this.menu.showClear(this.level.starCount, this.playTime, this.level.starTotal, this.level.clearTitle, this.level.clearText), 900);
+    const lv = this.level, secs = this.playTime;
+    // Koiwa only: render the shareable result card while the confetti plays
+    const card = lv.cardInfo ? import('../ui/ResultCard').then((m) => m.renderResultCard(lv.cardInfo!(secs))).catch((e) => { console.warn('card failed', e); return null; }) : Promise.resolve(null);
+    setTimeout(async () => {
+      this.menu.showClear(lv.starCount, secs, lv.starTotal, lv.clearTitle, lv.clearText, await card);
+    }, 900);
   }
 
   refreshHud() {

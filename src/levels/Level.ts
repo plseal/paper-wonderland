@@ -2,6 +2,7 @@ import type { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
 import type { CollisionWorld } from '../core/Collision';
 import type { Interactable } from './ForestLevel';
+import type { CardInfo } from '../ui/ResultCard';
 
 export type LevelId = 'forest' | 'koiwa';
 
@@ -24,4 +25,6 @@ export interface Level {
   update(dt: number, p: Vector3): void;
   nearestInteractable(p: Vector3): Interactable | null;
   respawnPoint(lastSafe: Vector3): Vector3;
+  /** Optional shareable clear card (Koiwa level only). */
+  cardInfo?(secs: number): CardInfo;
 }
