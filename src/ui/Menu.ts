@@ -1,5 +1,7 @@
 import soraUrl from '../assets/sora.webp';
+import kaiUrl from '../assets/kai.webp';
 import type { LevelId } from '../levels/Level';
+import type { CardInfo } from './ResultCard';
 
 /** Title screen (with level choice) + clear screen (HTML overlays styled like paper cards). */
 export class Menu {
@@ -18,13 +20,14 @@ export class Menu {
     this.title.id = 'title';
     this.title.innerHTML = `
       <div class="panel paper-card">
-        <img class="hero" src="${soraUrl}" alt="そらちゃん" />
+        <div class="heroes"><img class="hero" src="${soraUrl}" alt="そらちゃん" /><img class="hero kai" id="kaiPortrait" src="${kaiUrl}" alt="かい" /></div>
         <h1>そらちゃんの<br/>かみの ぼうけん</h1>
         <div class="sub">PAPER WONDERLAND</div>
         <p>どこへ いく？ ステージを えらんでね。</p>
         <div class="stages">
           <button class="btn stage" id="startBtn"><span class="ico">🌲</span>かみの もり<small>コンの ほしを さがそう</small></button>
-          <button class="btn stage city" id="koiwaBtn"><span class="ico">🚃</span>こいわの まち<small>こいわえき きたぐち 1km</small><em>NEW</em></button>
+          <button class="btn stage city" id="koiwaBtn"><span class="ico">🚃</span>こいわの まち<small>こいわえき きたぐち</small></button>
+          <button class="btn stage field" id="kaiBtn"><span class="ico">🎵</span>かいと かぜの げんや<small>あたらしい しゅじんこう かい</small><em>NEW</em></button>
         </div>
         <p class="controls-hint">
           <kbd>W A S D</kbd> / <kbd>←↑↓→</kbd> いどう　<kbd>Space</kbd> ジャンプ<br/>
@@ -35,6 +38,7 @@ export class Menu {
     root.appendChild(this.title);
     this.title.querySelector('#startBtn')!.addEventListener('click', () => onStart('forest'));
     this.title.querySelector('#koiwaBtn')!.addEventListener('click', () => onStart('koiwa'));
+    this.title.querySelector('#kaiBtn')!.addEventListener('click', () => onStart('kai'));
 
     this.clear = document.createElement('div');
     this.clear.className = 'screen hidden';
@@ -44,7 +48,7 @@ export class Menu {
         <img class="hero" src="${soraUrl}" alt="そらちゃん" />
         <h1 id="clearTitle">やったね！ クリア！</h1>
         <p id="clearText"></p>
-        <div class="stats"><span>★ <b id="clearStars">5</b> / <span id="clearTotal">5</span></span><span>⏱ <b id="clearTime">0:00</b></span></div>
+        <div class="stats"><span><i id="clearSym" style="font-style:normal">★</i> <b id="clearStars">5</b> / <span id="clearTotal">5</span></span><span>⏱ <b id="clearTime">0:00</b></span></div>
         <div class="card-wrap hidden" id="cardWrap">
           <img id="clearCard" alt="クリア カード" />
           <div class="card-btns">
@@ -64,11 +68,14 @@ export class Menu {
 
   /** current result card (PNG) – null for levels without a card */
   card: { blob: Blob; url: string; dataUrl: string } | null = null;
-  private static FILE = 'sorachan-koiwa-clear.png';
-  private static SHARE_TEXT = 'そらちゃんと こいわの まち を クリアしたよ！ ★ #PaperWonderland';
+  private file = 'sorachan-koiwa-clear.png';
+  private shareText = 'そらちゃんと こいわの まち を クリアしたよ！ ★ #PaperWonderland';
+  private shareTitle = 'そらちゃんと こいわの まち';
   private static SHARE_URL = 'https://plseal.github.io/paper-wonderland/';
 
-  private async setCard(cv: HTMLCanvasElement | null) {
+  private async setCard(cc: { canvas: HTMLCanvasElement; info: CardInfo } | null) {
+    const cv = cc?.canvas ?? null;
+    if (cc) { this.file = cc.info.fileName ?? this.file; this.shareText = cc.info.shareText ?? this.shareText; this.shareTitle = cc.info.title; }
     const wrap = this.clear.querySelector('#cardWrap') as HTMLElement;
     if (this.card) URL.revokeObjectURL(this.card.url);
     this.card = null;
@@ -85,17 +92,17 @@ export class Menu {
   saveCard() {
     if (!this.card) return;
     const a = document.createElement('a');
-    a.href = this.card.url; a.download = Menu.FILE;
+    a.href = this.card.url; a.download = this.file;
     document.body.appendChild(a); a.click(); a.remove();
   }
 
   /** Web Share with the PNG when the browser supports files, otherwise an X (Twitter) post intent. */
   async shareCard() {
-    const text = Menu.SHARE_TEXT, url = Menu.SHARE_URL;
+    const text = this.shareText, url = Menu.SHARE_URL;
     if (this.card && typeof File !== 'undefined' && navigator.canShare) {
-      const file = new File([this.card.blob], Menu.FILE, { type: 'image/png' });
+      const file = new File([this.card.blob], this.file, { type: 'image/png' });
       if (navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'そらちゃんと こいわの まち', text: text + ' ' + url }); return; }
+        try { await navigator.share({ files: [file], title: this.shareTitle, text: text + ' ' + url }); return; }
         catch (e) { if ((e as Error).name === 'AbortError') return; }
       }
     }
@@ -106,7 +113,7 @@ export class Menu {
   showLoading(on: boolean) { this.loading.classList.toggle('hidden', !on); }
   showTitle() { this.title.classList.remove('hidden'); }
   hideTitle() { this.title.classList.add('hidden'); }
-  showClear(stars: number, secs: number, total = 5, title = 'やったね！ クリア！', text = '', card: HTMLCanvasElement | null = null) {
+  showClear(stars: number, secs: number, total = 5, title = 'やったね！ クリア！', text = '', card: { canvas: HTMLCanvasElement; info: CardInfo } | null = null) {
     void this.setCard(card);
     (this.clear.querySelector('#clearStars') as HTMLElement).textContent = String(stars);
     (this.clear.querySelector('#clearTotal') as HTMLElement).textContent = String(total);

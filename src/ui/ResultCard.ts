@@ -11,8 +11,18 @@ export interface CardMap {
   stars: { x: number; z: number }[];
   fox: { x: number; z: number };
   path: number[];                   // [x0,z0,x1,z1,...]
+  water?: { v: number[]; i: number[] };
+  labels?: { x: number; z: number; text: string }[];
+  center?: { x: number; z: number };
+  ground?: string;
+  palette?: string[];
+  /** NPC marker on the map (default: fox コン) */
+  npc?: { name: string; kind: 'fox' | 'owl' };
 }
-export interface CardInfo { title: string; subtitle: string; secs: number; stars: number; total: number; url: string; credits: string; date: Date; map: CardMap }
+export interface CardInfo {
+  title: string; subtitle: string; secs: number; stars: number; total: number; url: string; credits: string; date: Date; map: CardMap;
+  portrait?: string; mapCaption?: string; starLabel?: string; shareText?: string; fileName?: string;
+}
 
 export const CARD_W = 1080, CARD_H = 1350;
 
@@ -46,9 +56,10 @@ function star(c: CanvasRenderingContext2D, x: number, y: number, r: number, fill
 function drawMap(c: CanvasRenderingContext2D, m: CardMap, x: number, y: number, size: number) {
   c.save();
   roundRect(c, x, y, size, size, 22); c.clip();
-  c.fillStyle = '#f6efdf'; c.fillRect(x, y, size, size);
+  c.fillStyle = m.ground ?? '#f6efdf'; c.fillRect(x, y, size, size);
   const R = m.radius + 6, k = size / (2 * R), cx = x + size / 2, cy = y + size / 2;
-  const P = (px: number, pz: number): [number, number] => [cx + px * k, cy - pz * k];
+  const ox = m.center?.x ?? 0, oz = m.center?.z ?? 0;
+  const P = (px: number, pz: number): [number, number] => [cx + (px - ox) * k, cy - (pz - oz) * k];
   const tris = (t: { v: number[]; i: number[] }, col: string) => {
     c.fillStyle = col; c.beginPath();
     for (let n = 0; n < t.i.length; n += 3) {
@@ -57,19 +68,24 @@ function drawMap(c: CanvasRenderingContext2D, m: CardMap, x: number, y: number, 
     }
     c.fill();
   };
-  tris(m.roads, '#d6d6ea');
+  if (m.water) tris(m.water, '#a9c6f2');
+  tris(m.roads, m.ground ? '#f3e3bf' : '#d6d6ea');
   const poly = (pts: number[], fill: string, stroke = 'rgba(90,70,140,0.35)') => {
     c.beginPath(); for (let n = 0; n < pts.length; n += 2) c.lineTo(...P(pts[n], pts[n + 1])); c.closePath();
     c.fillStyle = 'rgba(74,63,107,0.12)'; c.save(); c.translate(3, 4); c.fill(); c.restore();
     c.fillStyle = fill; c.fill(); c.strokeStyle = stroke; c.lineWidth = 2; c.stroke();
   };
-  const pal = ['#fbe3d3', '#fde9c9', '#f6d6e2', '#dcefe0', '#e3defa', '#d8e8f8'];
+  const pal = m.palette ?? ['#fbe3d3', '#fde9c9', '#f6d6e2', '#dcefe0', '#e3defa', '#d8e8f8'];
   m.buildings.forEach((b, i) => poly(b, pal[i % pal.length]));
-  poly(m.station, '#fff4dc');
+  if (m.station.length) poly(m.station, '#fff4dc');
   tris(m.viaduct, 'rgba(185,176,236,0.75)');
-  // station label
-  c.fillStyle = '#5b4c94'; c.font = `bold ${Math.round(size * 0.04)}px ${FONT}`; c.textAlign = 'center';
-  const sp = P(18, -14); c.fillText('小岩駅', sp[0], sp[1]);
+  // place labels
+  c.font = `bold ${Math.round(size * 0.036)}px ${FONT}`; c.textAlign = 'center';
+  for (const l of m.labels ?? []) {
+    const sp = P(l.x, l.z);
+    c.lineWidth = 6; c.strokeStyle = 'rgba(255,255,255,0.85)'; c.strokeText(l.text, sp[0], sp[1]);
+    c.fillStyle = '#5b4c94'; c.fillText(l.text, sp[0], sp[1]);
+  }
   // route (dashed paper ribbon)
   if (m.path.length >= 4) {
     c.lineCap = 'round'; c.lineJoin = 'round';
@@ -82,11 +98,24 @@ function drawMap(c: CanvasRenderingContext2D, m: CardMap, x: number, y: number, 
   }
   for (const s of m.stars) { const q = P(s.x, s.z); star(c, q[0], q[1], 20, '#ffd86b'); }
   const f = P(m.fox.x, m.fox.z);
-  // little paper fox head (no emoji fonts needed)
-  c.fillStyle = '#f5ae6e'; c.strokeStyle = '#fff'; c.lineWidth = 3;
-  c.beginPath(); c.moveTo(f[0] - 16, f[1] - 12); c.lineTo(f[0] - 8, f[1] - 26); c.lineTo(f[0] - 2, f[1] - 12);
-  c.lineTo(f[0] + 2, f[1] - 12); c.lineTo(f[0] + 8, f[1] - 26); c.lineTo(f[0] + 16, f[1] - 12); c.lineTo(f[0], f[1] + 12); c.closePath(); c.fill(); c.stroke();
-  c.fillStyle = '#5b4c94'; c.font = `bold 18px ${FONT}`; c.fillText('コン', f[0], f[1] + 34);
+  const npc = m.npc ?? { name: 'コン', kind: 'fox' as const };
+  c.strokeStyle = '#fff'; c.lineWidth = 3;
+  if (npc.kind === 'owl') {
+    // little paper owl: round body, ear tufts, two big eyes
+    c.fillStyle = '#a77a55';
+    c.beginPath(); c.moveTo(f[0] - 14, f[1] - 10); c.lineTo(f[0] - 12, f[1] - 24); c.lineTo(f[0] - 4, f[1] - 14);
+    c.lineTo(f[0] + 4, f[1] - 14); c.lineTo(f[0] + 12, f[1] - 24); c.lineTo(f[0] + 14, f[1] - 10); c.closePath(); c.fill();
+    c.beginPath(); c.arc(f[0], f[1], 16, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = '#fff'; for (const d of [-6, 6]) { c.beginPath(); c.arc(f[0] + d, f[1] - 3, 5.5, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#3a2f4a'; for (const d of [-6, 6]) { c.beginPath(); c.arc(f[0] + d, f[1] - 3, 2.6, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#f0a33c'; c.beginPath(); c.moveTo(f[0] - 3, f[1] + 3); c.lineTo(f[0] + 3, f[1] + 3); c.lineTo(f[0], f[1] + 8); c.closePath(); c.fill();
+  } else {
+    // little paper fox head (no emoji fonts needed)
+    c.fillStyle = '#f5ae6e';
+    c.beginPath(); c.moveTo(f[0] - 16, f[1] - 12); c.lineTo(f[0] - 8, f[1] - 26); c.lineTo(f[0] - 2, f[1] - 12);
+    c.lineTo(f[0] + 2, f[1] - 12); c.lineTo(f[0] + 8, f[1] - 26); c.lineTo(f[0] + 16, f[1] - 12); c.lineTo(f[0], f[1] + 12); c.closePath(); c.fill(); c.stroke();
+  }
+  c.fillStyle = '#5b4c94'; c.font = `bold 18px ${FONT}`; c.fillText(npc.name, f[0], f[1] + 34);
   // compass
   c.fillStyle = '#8f86c1'; c.font = `bold 22px ${FONT}`; c.fillText('N ▲', x + size - 50, y + 40);
   c.restore();
@@ -120,11 +149,11 @@ export async function renderResultCard(info: CardInfo): Promise<HTMLCanvasElemen
   const mapX = 110, mapY = 320, mapS = 560;
   drawMap(c, info.map, mapX, mapY, mapS);
   c.fillStyle = '#8f86c1'; c.font = `22px ${FONT}`; c.textAlign = 'left';
-  c.fillText('そらちゃんの あるいた みち（きたぐち ひろば）', mapX + 4, mapY + mapS + 40);
+  c.fillText(info.mapCaption ?? 'そらちゃんの あるいた みち（きたぐち ひろば）', mapX + 4, mapY + mapS + 40);
 
   const rx = 700, rw = 280;
   try {
-    const img = await loadImage(soraUrl);
+    const img = await loadImage(info.portrait ?? soraUrl);
     const h = 260, w = (img.width / img.height) * h;
     c.save(); c.translate(rx + rw / 2, mapY + 150); c.rotate(-0.06);
     c.shadowColor = 'rgba(74,63,107,0.25)'; c.shadowOffsetX = 6; c.shadowOffsetY = 10; c.shadowBlur = 0;
@@ -136,7 +165,7 @@ export async function renderResultCard(info: CardInfo): Promise<HTMLCanvasElemen
     c.fillStyle = col; c.font = `bold 52px ${FONT}`; c.fillText(value, rx + rw / 2, y + 98);
   };
   stat(mapY + 300, 'クリア タイム', fmtTime(info.secs), '#5b4c94');
-  stat(mapY + 440, 'あつめた ほし', `★ ${info.stars} / ${info.total}`, '#e8a93a');
+  stat(mapY + 440, info.starLabel ?? 'あつめた ほし', `${info.starLabel ? '♪' : '★'} ${info.stars} / ${info.total}`, '#e8a93a');
 
   // footer
   const fy = mapY + mapS + 100;

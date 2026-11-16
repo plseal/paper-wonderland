@@ -6,7 +6,7 @@ import { Sfx } from './Audio';
 import { CameraController } from './Camera';
 import { World } from '../world/World';
 import { Effects } from '../world/Effects';
-import { Player } from '../player/Player';
+import { Player, type Avatar } from '../player/Player';
 import { ForestLevel } from '../levels/ForestLevel';
 import type { Level, LevelId } from '../levels/Level';
 import { Dialog, type DialogLine } from '../ui/Dialog';
@@ -23,7 +23,7 @@ export class Game {
   world!: World;
   level!: Level;
   levelId: LevelId = 'forest';
-  player!: Player;
+  player!: Avatar;
   camera!: CameraController;
   effects!: Effects;
   dialog: Dialog;
@@ -64,14 +64,24 @@ export class Game {
       onProgress: () => this.refreshHud(),
       onClear: () => this.clear(),
     };
-    if (id === 'koiwa') {
+    if (id === 'kai') {
+      const { KaiLevel } = await import('../levels/KaiLevel');
+      this.level = await KaiLevel.create(scene, this.world, host, this.camera);
+    } else if (id === 'koiwa') {
       const { KoiwaLevel } = await import('../levels/KoiwaLevel');
       this.level = await KoiwaLevel.create(scene, this.world, host, this.camera);
     } else {
       this.level = new ForestLevel(scene, this.world, host);
     }
     this.hud.setCredits(id === 'koiwa' ? '3D都市モデル: PLATEAU（国土交通省）／ 地図: © OpenStreetMap contributors' : '');
-    this.player = await Player.create(scene);
+    this.hud.idleActLabel = this.level.idleActLabel ?? 'はなす';
+    for (const sid of ['starSym', 'clearSym']) { const el = document.getElementById(sid); if (el) el.textContent = id === 'kai' ? '♪' : '★'; }
+    if (id === 'kai') {
+      const { KaiPlayer } = await import('../player/KaiPlayer');
+      const kai = KaiPlayer.create(scene);
+      (this.level as unknown as { attachKai?(k: unknown): void }).attachKai?.(kai);
+      this.player = kai;
+    } else this.player = await Player.create(scene);
     this.world.cast(...this.player.casters);
     this.player.teleport(this.level.start);
     this.player.update(0.016, { x: 0, z: 0 }, false, 0, this.level.col);
@@ -129,7 +139,8 @@ export class Game {
     this.hud.show(false);
     const lv = this.level, secs = this.playTime;
     // Koiwa only: render the shareable result card while the confetti plays
-    const card = lv.cardInfo ? import('../ui/ResultCard').then((m) => m.renderResultCard(lv.cardInfo!(secs))).catch((e) => { console.warn('card failed', e); return null; }) : Promise.resolve(null);
+    const info = lv.cardInfo?.(secs) ?? null;
+    const card = info ? import('../ui/ResultCard').then(async (m) => ({ canvas: await m.renderResultCard(info), info })).catch((e) => { console.warn('card failed', e); return null; }) : Promise.resolve(null);
     setTimeout(async () => {
       this.menu.showClear(lv.starCount, secs, lv.starTotal, lv.clearTitle, lv.clearText, await card);
     }, 900);
@@ -164,16 +175,16 @@ export class Game {
       jump = this.input.consumeJump();
       const near = this.level.nearestInteractable(this.player.pos);
       this.hud.setPrompt(near ? near.label : null);
-      if (this.input.consumeAct() && near) { this.hud.setPrompt(null); near.action(); }
+      if (this.input.consumeAct()) { if (near) { this.hud.setPrompt(null); near.action(); } else this.level.onAct?.(); }
     } else if (!this.dialog.open) this.input.clearEdges();
     if (frozen) this.hud.setPrompt(null);
 
     if (this.player.update(dt, move, jump, this.camera.yaw, this.level.col)) this.sfx.jump();
-    if (this.player.pos.y < -1.6) {
+    if (this.player.pos.y < -1.6 || this.level.isDrowning?.(this.player.pos)) {
       this.sfx.splash();
       this.effects.burst(new Vector3(this.player.pos.x, -0.4, this.player.pos.z), { count: 30, colors: [new Color4(0.75, 0.85, 1, 1), new Color4(1, 1, 1, 1)] });
       this.player.teleport(this.level.respawnPoint(this.player.lastSafe));
-      this.hud.toast('ざぶん！ かわに おちちゃった');
+      this.hud.toast(this.levelId === 'kai' ? 'ざぶん！ みずに おちちゃった' : 'ざぶん！ かわに おちちゃった');
     }
     this.level.update(dt, this.player.pos);
     this.camera.update(dt, this.player.pos, frozen ? 0 : this.input.camTurn());

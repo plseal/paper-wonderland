@@ -11,13 +11,14 @@ export class Hud {
   touch: HTMLDivElement;
   private actBtn: HTMLButtonElement;
   touchMode: boolean;
+  idleActLabel = 'はなす';
 
   constructor(root: HTMLElement, input: Input, onMute: () => boolean) {
     this.el = document.createElement('div');
     this.el.className = 'hud';
     this.el.style.display = 'none';
     this.el.innerHTML = `
-      <div class="box paper-card stars">★ <b id="starCount">0</b> / <span id="starTotal">5</span></div>
+      <div class="box paper-card stars"><i id="starSym" style="font-style:normal">★</i> <b id="starCount">0</b> / <span id="starTotal">5</span></div>
       <div class="box paper-card quest"><small>やること</small><span id="questText"></span></div>
       <div class="right"><button class="icon-btn" id="muteBtn" aria-label="おと">🔊</button></div>`;
     root.appendChild(this.el);
@@ -88,11 +89,11 @@ export class Hud {
   }
   setQuest(t: string) { if (this.quest.textContent !== t) this.quest.textContent = t; }
   setPrompt(label: string | null) {
-    if (!label) { this.prompt.classList.add('hidden'); this.actBtn.classList.remove('ready'); this.actBtn.textContent = 'はなす'; return; }
+    if (!label) { this.prompt.classList.add('hidden'); this.actBtn.classList.remove('ready'); this.actBtn.textContent = this.idleActLabel; return; }
     this.prompt.textContent = this.touchMode ? `🖐 ${label}` : `E： ${label}`;
     this.prompt.classList.remove('hidden');
     this.actBtn.classList.add('ready');
-    this.actBtn.textContent = label.includes('レバー') ? 'つかう' : 'はなす';
+    this.actBtn.textContent = label.includes('マラカス') ? 'ふる' : label.includes('しらべる') ? 'しらべる' : label.includes('レバー') ? 'つかう' : 'はなす';
   }
   toast(msg: string, ms = 1800) {
     this.toastEl.textContent = msg;

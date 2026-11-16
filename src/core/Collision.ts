@@ -21,6 +21,8 @@ export class CollisionWorld {
   blockers: Blocker[] = [];
   bounds = { minX: -16.5, maxX: 16.5, minZ: -19.5, maxZ: 39.5 };
   extras: ExtraCollider[] = [];
+  /** Optional height-field ground (rolling hills). Returns top + id at (x,z). */
+  terrain?: (x: number, z: number) => { top: number; id: string };
 
   addSurface(s: Surface) { this.surfaces.push(s); return s; }
   addBlocker(b: Blocker) { this.blockers.push(b); return b; }
@@ -28,6 +30,7 @@ export class CollisionWorld {
   /** Highest enabled surface under (x,z) whose top is reachable from height y. */
   groundAt(x: number, z: number, y: number, r = 0): { top: number; id: string } | null {
     let best: { top: number; id: string } | null = null;
+    if (this.terrain) { const t = this.terrain(x, z); if (t.top <= y + STEP) best = { top: t.top, id: t.id }; }
     for (const s of this.surfaces) {
       if (s.enabled && !s.enabled()) continue;
       if (x < s.minX - r || x > s.maxX + r || z < s.minZ - r || z > s.maxZ + r) continue;

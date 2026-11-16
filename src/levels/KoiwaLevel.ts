@@ -812,7 +812,10 @@ export class KoiwaLevel implements Level {
         stars: this.stars.map((s) => ({ x: s.base.x / S, z: s.base.z / S })),
         fox: { x: this.foxPos.x / S, z: this.foxPos.z / S },
         path: this.path.slice(),
+        labels: [{ x: 18, z: -14, text: '小岩駅' }],
       },
+      shareText: 'そらちゃんと こいわの まち を クリアしたよ！ ★ #PaperWonderland',
+      fileName: 'sorachan-koiwa-clear.png',
     };
   }
 

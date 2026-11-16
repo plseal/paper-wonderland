@@ -4,7 +4,7 @@ import type { CollisionWorld } from '../core/Collision';
 import type { Interactable } from './ForestLevel';
 import type { CardInfo } from '../ui/ResultCard';
 
-export type LevelId = 'forest' | 'koiwa';
+export type LevelId = 'forest' | 'koiwa' | 'kai';
 
 /** What Game needs from any level. */
 export interface Level {
@@ -27,4 +27,10 @@ export interface Level {
   respawnPoint(lastSafe: Vector3): Vector3;
   /** Optional shareable clear card (Koiwa level only). */
   cardInfo?(secs: number): CardInfo;
+  /** E / act pressed with nothing to interact with (e.g. shake the maracas). */
+  onAct?(): void;
+  /** Label for the touch act button when nothing is nearby. */
+  idleActLabel?: string;
+  /** true when the avatar fell into deep water (respawn). */
+  isDrowning?(p: Vector3): boolean;
 }

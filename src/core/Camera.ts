@@ -13,6 +13,8 @@ export class CameraController {
   private time = 0;
   /** Optional occlusion test: fraction of target→camera segment that is free (city level). */
   clip?: (from: Vector3, to: Vector3) => number;
+  /** Optional ground height under the camera (keeps it above hills). */
+  minY?: (x: number, z: number) => number;
 
   constructor(scene: Scene, canvas: HTMLCanvasElement) {
     this.cam = new FreeCamera('cam', new Vector3(0, 5, -10), scene);
@@ -52,6 +54,7 @@ export class CameraController {
       const f = this.clip(this.target, desired);
       if (f < 1) { desired = Vector3.Lerp(this.target, desired, f); this.cam.position = desired.clone(); }
     }
+    if (this.minY) { const gy = this.minY(desired.x, desired.z) + 0.7; if (desired.y < gy) desired.y = gy; }
     this.cam.position = snap ? desired : Vector3.Lerp(this.cam.position, desired, k);
     this.cam.setTarget(this.target);
   }

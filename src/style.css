@@ -107,3 +107,10 @@ kbd { font-family: inherit; background: #efeafc; border-radius: 6px; padding: 1p
 #clear.with-card p { margin: 4px 0; font-size: 14px; }
 #clear.with-card .stats { margin: 4px 0; font-size: 16px; }
 #clear.with-card .btn:not(.small) { font-size: 17px; padding: 9px 22px; }
+
+.btn.stage.field { background: linear-gradient(#9ed6a0, #6fb878); box-shadow: 0 5px 0 #4b8a55, 0 10px 18px rgba(74,63,107,.3); }
+.stages .btn.stage { min-width: 160px; }
+@media (max-width: 560px) { .btn.stage { min-width: 0 !important; width: 100%; padding: 8px 14px; font-size: 18px; } .stages { gap: 8px; } }
+
+.heroes { display: flex; justify-content: center; align-items: flex-end; gap: 6px; }
+.screen img.hero.kai { width: 104px; animation-delay: -.8s; }

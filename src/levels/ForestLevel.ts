@@ -25,7 +25,7 @@ export interface LevelHost {
   toast(msg: string, ms?: number): void;
   dialog(lines: DialogLine[], onDone?: () => void): void;
   focus(p: Vector3, seconds: number): void;
-  sfx: { star(): void; fold(): void; splash(): void };
+  sfx: { star(): void; fold(): void; splash(): void; melody?(full?: boolean): number; shaker?(delay?: number): void };
   effects: Effects;
   onProgress(): void;
   onClear(): void;

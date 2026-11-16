@@ -24,7 +24,18 @@ function loadImage(url: string) {
  * The photo cut-out is on the front & back, with several white "paper core"
  * layers in between so the edge thickness shows when the card turns.
  */
-export class Player {
+/** What Game needs from a playable character. */
+export interface Avatar {
+  pos: Vector3;
+  grounded: boolean;
+  groundId: string;
+  lastSafe: Vector3;
+  casters: Mesh[];
+  teleport(p: Vector3): void;
+  update(dt: number, move: { x: number; z: number }, jump: boolean, camYaw: number, world: CollisionWorld): boolean;
+}
+
+export class Player implements Avatar {
   root: TransformNode;
   card: TransformNode;
   pos = new Vector3(0, 0, 0);
